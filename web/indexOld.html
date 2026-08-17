@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ocean View Resort | Book Your Stay</title>
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI, Arial, sans-serif;}
+    body{background:#f5f7fb;color:#111;}
+
+    /* Layout */
+    .container{max-width:1100px;margin:0 auto;padding:0 18px;}
+
+    /* Navbar */
+    .nav{
+      position:sticky; top:0; z-index:10;
+      background:#fff;
+      border-bottom:1px solid #eef1f6;
+    }
+    .nav-inner{
+      height:70px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .brand{font-weight:800;font-size:20px;letter-spacing:.2px;}
+    .menu{display:flex;gap:18px;align-items:center;}
+    .menu a{
+      text-decoration:none;color:#444;font-size:14px;
+      padding:8px 10px;border-radius:10px;
+    }
+    .menu a:hover{background:#f3f6ff;color:#1b4fff;}
+    .actions{display:flex;gap:10px;align-items:center;}
+    .btn{
+      text-decoration:none;font-size:14px;font-weight:600;
+      padding:10px 14px;border-radius:999px;display:inline-block;
+      border:1px solid #dbe3ff;
+    }
+    .btn-outline{color:#1b4fff;background:#fff;}
+    .btn-outline:hover{background:#f3f6ff;}
+    .btn-primary{background:#1b4fff;color:#fff;border-color:#1b4fff;}
+    .btn-primary:hover{filter:brightness(.95);}
+
+    /* Hero */
+    .hero-wrap{padding:18px 0 6px;}
+    .hero{
+      position:relative;
+      height:320px;
+      border-radius:22px;
+      overflow:hidden;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.55), rgba(0,0,0,.15)),
+        url("https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1600&q=70");
+      background-size:cover;
+      background-position:center;
+    }
+    .hero-content{
+      position:absolute; inset:0;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      text-align:center; color:#fff;
+      padding:18px;
+    }
+    .hero h1{font-size:34px;line-height:1.15;margin-bottom:10px;}
+    .hero p{font-size:14px;opacity:.9;max-width:520px;}
+
+    /* Search bar overlay */
+    .search-bar{
+      position:relative;
+      margin:-34px auto 0;
+      max-width:920px;
+      background:#fff;
+      border-radius:18px;
+      box-shadow:0 14px 35px rgba(0,0,0,.12);
+      padding:14px;
+    }
+    .search-grid{
+      display:grid;
+      grid-template-columns: 1.2fr 1fr 1fr .9fr 56px;
+      gap:10px;
+      align-items:stretch;
+    }
+    .field{
+      border:1px solid #eef1f6;
+      border-radius:14px;
+      padding:10px 12px;
+      background:#fff;
+    }
+    .label{font-size:11px;color:#777;font-weight:700;margin-bottom:4px;}
+    .input{
+      width:100%;
+      border:none; outline:none;
+      font-size:14px;color:#222;
+      background:transparent;
+    }
+    .go{
+      width:56px;height:56px;border:none;cursor:pointer;
+      border-radius:16px;
+      background:#1b4fff;color:#fff;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 10px 22px rgba(27,79,255,.25);
+      font-size:20px;font-weight:900;
+    }
+    .go:hover{filter:brightness(.95);}
+
+    /* Section title */
+    .section{padding:22px 0 40px;}
+    .section h2{
+      font-size:16px;color:#222;
+      margin:18px 0 12px;
+      font-weight:800;
+    }
+
+    /* Destination cards grid */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr 1fr 1fr .9fr;
+      gap:14px;
+    }
+    .card{
+      position:relative;
+      border-radius:18px;
+      overflow:hidden;
+      min-height:170px;
+      background:#ddd;
+      box-shadow:0 10px 22px rgba(0,0,0,.08);
+      transform:translateZ(0);
+    }
+    .card img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(1.05);}
+    .tag{
+      position:absolute;left:12px;bottom:12px;
+      background:rgba(255,255,255,.88);
+      color:#111;font-weight:800;
+      padding:6px 10px;border-radius:999px;font-size:12px;
+      backdrop-filter: blur(6px);
+    }
+
+    /* Special layout like screenshot */
+    .tall{grid-row:span 2; min-height:360px;}
+    .stack{display:grid;grid-template-rows:1fr 1fr; gap:14px;}
+
+    /* Footer */
+    .footer{
+      padding:18px 0 26px;color:#777;font-size:13px;
+      border-top:1px solid #eef1f6;background:#fff;
+    }
+
+    /* Responsive */
+    @media (max-width: 980px){
+      .search-grid{grid-template-columns:1fr 1fr; }
+      .go{width:100%; height:48px; border-radius:14px;}
+      .grid{grid-template-columns:1fr 1fr;}
+      .tall{grid-row:auto; min-height:220px;}
+      .hero{height:300px;}
+    }
+    @media (max-width: 540px){
+      .grid{grid-template-columns:1fr;}
+      .hero h1{font-size:26px;}
+      .menu{display:none;}
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <div class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <div class="brand">OceanView</div>
+
+        <div class="menu">
+          <a href="#">Properties</a>
+          <a href="#">Attractions</a>
+          <a href="#">Popular</a>
+        </div>
+
+        <div class="actions">
+          <a class="btn btn-outline" href="login.jsp">Sign in</a>
+          <!--<a class="btn btn-primary" href="dashboard.jsp">Dashboard</a>-->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero-wrap">
+    <div class="container">
+      <div class="hero">
+        <div class="hero-content">
+          <h1>Book your stay with OceanView</h1>
+          <p>Comfortable rooms, beachside views, and fast reservation management.</p>
+        </div>
+      </div>
+
+      <!-- SEARCH BAR (UI only) -->
+      <div class="search-bar">
+        <form class="search-grid" action="login.jsp" method="get">
+          <div class="field">
+            <div class="label">Location</div>
+            <input class="input" type="text" placeholder="Where are you going?" />
+          </div>
+
+          <div class="field">
+            <div class="label">Check-in</div>
+            <input class="input" type="date" />
+          </div>
+
+          <div class="field">
+            <div class="label">Check-out</div>
+            <input class="input" type="date" />
+          </div>
+
+          <div class="field">
+            <div class="label">Guests</div>
+            <input class="input" type="number" min="1" value="2" />
+          </div>
+
+          <button class="go" type="submit" title="Search">➜</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPULAR -->
+  <div class="section">
+    <div class="container">
+      <h2>Popular destinations</h2>
+
+      <div class="grid">
+        <!-- Left big -->
+        <div class="card tall">
+          <img src="https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=70" alt="Galle">
+          <div class="tag">Galle</div>
+        </div>
+
+        <!-- Middle stacked -->
+        <div class="stack">
+          <div class="card">
+            <img src="https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1200&q=70" alt="Colombo">
+            <div class="tag">Colombo</div>
+          </div>
+          <div class="card">
+            <img src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1200&q=70" alt="Kandy">
+            <div class="tag">Kandy</div>
+          </div>
+        </div>
+
+        <!-- Middle big -->
+        <div class="card tall">
+          <img src="https://images.unsplash.com/photo-1506929562872-bb421503ef21?auto=format&fit=crop&w=1200&q=70" alt="Beach View">
+          <div class="tag">Beach View</div>
+        </div>
+
+        <!-- Right stacked -->
+        <div class="stack">
+          <div class="card">
+            <img src="https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=70" alt="Bentota">
+            <div class="tag">Bentota</div>
+          </div>
+          <div class="card">
+            <img src="https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1200&q=70" alt="Ella">
+            <div class="tag">Ella</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="container">
+      © 2026 Ocean View Resort | Reservation Management System
+    </div>
+  </div>
+
+</body>
+</html>
