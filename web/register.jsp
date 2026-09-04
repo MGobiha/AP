@@ -46,6 +46,10 @@
     </div>
 
     <form action="register" method="post">
+      <% String regError = request.getParameter("error"); %>
+      <% if (regError != null && !regError.isBlank()) { %>
+        <p style="background:#ffecec;color:#c21818;padding:10px;border-radius:12px;margin:12px 0;font-size:13px;"><%= regError %></p>
+      <% } %>
       <div class="row">
         <label>Full Name</label>
         <input type="text" name="fullName" required>
@@ -75,7 +79,7 @@
     </form>
 
     <div class="small">
-      Already have an account? <a href="login.jsp">Login</a> | <a href="indexOld.html">Home</a>
+      Already have an account? <a href="login.jsp">Login</a> | <a href="index.jsp">Home</a>
     </div>
   </div>
 </body>

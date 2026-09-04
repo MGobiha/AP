@@ -26,6 +26,24 @@ public class DashboardDAO {
         return countInt("SELECT COUNT(*) FROM reservations");
     }
 
+    public int countConfirmed() {
+        return countInt("SELECT COUNT(*) FROM reservations WHERE status='CONFIRMED'");
+    }
+
+    public double sumConfirmedRevenue() {
+        String sql = "SELECT COALESCE(SUM(total_amount),0) FROM reservations WHERE status='CONFIRMED'";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getDouble(1);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     private int countInt(String sql) {
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql);
@@ -44,7 +62,7 @@ public class DashboardDAO {
         List<String[]> list = new ArrayList<>();
 
         String sql =
-                "SELECT r.reservation_no, u.username, rm.room_no, r.check_in, r.check_out, r.total, rm.status " +
+                "SELECT r.reservation_no, u.username, rm.room_no, r.check_in, r.check_out, r.total_amount, r.status " +
                 "FROM reservations r " +
                 "JOIN users u ON r.user_id = u.id " +
                 "JOIN rooms rm ON r.room_id = rm.id " +
@@ -62,7 +80,7 @@ public class DashboardDAO {
                         rs.getString("room_no"),
                         rs.getString("check_in"),
                         rs.getString("check_out"),
-                        rs.getString("total"),
+                        rs.getString("total_amount"),
                         rs.getString("status")
                 });
             }

@@ -1,11 +1,15 @@
 package controller;
 
-import dao.UserDAO;
-import model.Users;
-
+import factory.DAOFactory;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import model.Users;
+import util.AuthUtil;
+import util.ValidationUtil;
 
 import java.io.IOException;
 
@@ -16,36 +20,32 @@ public class LoginServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        String username = req.getParameter("username");
+        String username = ValidationUtil.trim(req.getParameter("username"));
         String password = req.getParameter("password");
 
-        UserDAO dao = new UserDAO();
-        Users user = dao.login(username, password);
+        if (ValidationUtil.isBlank(username) || ValidationUtil.isBlank(password)) {
+            resp.sendRedirect(req.getContextPath() + "/login.jsp?error=required");
+            return;
+        }
+
+        Users user = DAOFactory.getInstance().createUserDAO().login(username, password);
 
         if (user == null) {
             resp.sendRedirect(req.getContextPath() + "/login.jsp?error=1");
             return;
         }
 
-        // ✅ Save session
         HttpSession session = req.getSession(true);
         session.setAttribute("user", user);
 
-        // ✅ Role based redirect
-        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
-
-        if ("ADMIN".equals(role)) {
-            resp.sendRedirect(req.getContextPath() + "/admin"); // goes to AdminController doGet (page null → dashboard)
+        if (AuthUtil.isAdmin(user)) {
+            resp.sendRedirect(req.getContextPath() + "/admin?page=dashboard");
             return;
         }
-
-        // If you use STAFF_L1 / STAFF_L2 / STAFF_L3
-        if (role.startsWith("STAFF")) {
-           resp.sendRedirect(req.getContextPath() + "/staff_dashboard.jsp");
+        if (AuthUtil.isStaff(user)) {
+            resp.sendRedirect(req.getContextPath() + "/staff");
             return;
         }
-
-        // CLIENT / VIP_CLIENT
         resp.sendRedirect(req.getContextPath() + "/index.jsp");
     }
 }

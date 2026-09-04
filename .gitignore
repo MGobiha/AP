@@ -1,1 +1,6 @@
 /build/
+/dist/
+/nbproject/private/
+*.war
+.DS_Store
+Thumbs.db

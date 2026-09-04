@@ -6,7 +6,7 @@ import jakarta.servlet.http.*;
 import java.io.IOException;
 import model.Users;
 
-@WebFilter("/admin/*")
+@WebFilter(urlPatterns = {"/admin", "/admin/*"})
 public class AdminAuthFilter implements Filter {
 
     @Override

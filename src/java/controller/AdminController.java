@@ -75,8 +75,13 @@ public class AdminController extends HttpServlet {
                 return;
 
             case "clients":
-                req.setAttribute("clients", userDAO.findClients()); // CLIENT + VIP_CLIENT
+                req.setAttribute("clients", userDAO.findClients());
                 req.getRequestDispatcher("admin_clients.jsp").forward(req, resp);
+                return;
+
+            case "reports":
+                req.setAttribute("recentReservations", reservationDAO.findRecent(25));
+                req.getRequestDispatcher("admin_reports.jsp").forward(req, resp);
                 return;
 
             default:

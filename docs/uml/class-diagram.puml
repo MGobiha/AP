@@ -1,0 +1,104 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+class Users {
+  - id : int
+  - username : String
+  - password : String
+  - role : String
+  - fullName : String
+  - phone : String
+  - address : String
+  + getId() : int
+  + getRole() : String
+}
+
+class Room {
+  - id : int
+  - roomNo : String
+  - roomType : String
+  - price : double
+  - status : String
+  - packageId : int
+}
+
+class Package {
+  - id : int
+  - name : String
+  - description : String
+  - pricePerNight : double
+  - status : String
+}
+
+class ReservationView {
+  - reservationNo : String
+  - clientName : String
+  - roomNo : String
+  - checkIn : Date
+  - checkOut : Date
+  - totalAmount : double
+  - status : String
+}
+
+class DBConnection {
+  - instance : DBConnection
+  - DBConnection()
+  + getInstance() : DBConnection
+  + getConnection() : Connection
+}
+
+class DAOFactory {
+  - INSTANCE : DAOFactory
+  + getInstance() : DAOFactory
+  + createUserDAO() : UserDAO
+  + createRoomDAO() : RoomDAO
+  + createReservationDAO() : ReservationDAO
+}
+
+class UserDAO {
+  + login()
+  + registerClient()
+  + usernameExists()
+}
+
+class RoomDAO {
+  + findAll()
+  + getRoomsByType()
+  + findAvailableRooms()
+}
+
+class ReservationDAO {
+  + generateReservationNo()
+  + createReservationAndBookRoom()
+  + findByReservationNo()
+  + getRoomInfo()
+}
+
+class BillingService {
+  + countNights()
+  + calculateRoomTotal()
+  + calculateBillTotal()
+}
+
+class LoginServlet
+class ConfirmBookingServlet
+class SearchReservationServlet
+class PrintBillServlet
+class ReservationApiServlet
+
+Users "1" --> "*" ReservationView : places
+Room "1" --> "*" ReservationView : booked as
+Package "1" --> "*" Room : groups
+DAOFactory --> UserDAO
+DAOFactory --> RoomDAO
+DAOFactory --> ReservationDAO
+UserDAO --> DBConnection
+RoomDAO --> DBConnection
+ReservationDAO --> DBConnection
+ReservationDAO --> BillingService
+LoginServlet --> DAOFactory
+ConfirmBookingServlet --> DAOFactory
+SearchReservationServlet --> DAOFactory
+PrintBillServlet --> BillingService
+ReservationApiServlet --> DAOFactory
+@enduml

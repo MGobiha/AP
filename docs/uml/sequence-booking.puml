@@ -1,0 +1,26 @@
+@startuml
+actor Guest
+participant Packages
+participant Book
+participant BookingSummaryServlet
+participant ConfirmBookingServlet
+participant ReservationDAO
+participant BillingService
+database MySQL
+
+Guest -> Packages : select available room
+Packages -> Book : roomId
+Guest -> Book : check-in / check-out
+Book -> BookingSummaryServlet : POST /bookingSummary
+BookingSummaryServlet -> ReservationDAO : getRoomInfo(roomId)
+ReservationDAO -> MySQL : SELECT rooms
+BookingSummaryServlet -> ReservationDAO : calculateTotal()
+ReservationDAO -> BillingService : calculateRoomTotal()
+BookingSummaryServlet --> Guest : booking_summary.jsp
+Guest -> ConfirmBookingServlet : POST /confirmBooking
+ConfirmBookingServlet -> ConfirmBookingServlet : validate date range
+ConfirmBookingServlet -> ReservationDAO : generateReservationNo()
+ConfirmBookingServlet -> ReservationDAO : createReservationAndBookRoom()
+ReservationDAO -> MySQL : UPDATE rooms + INSERT reservations (transaction)
+ConfirmBookingServlet --> Guest : booking_success.jsp?resNo=RES-...
+@enduml

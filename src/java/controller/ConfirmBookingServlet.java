@@ -1,11 +1,16 @@
 package controller;
 
 import dao.ReservationDAO;
-import model.Users;
-
+import factory.DAOFactory;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import model.Users;
+import util.AuthUtil;
+import util.ValidationUtil;
+
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -18,9 +23,13 @@ public class ConfirmBookingServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
 
-        Users user = (Users) req.getSession().getAttribute("user");
+        Users user = AuthUtil.currentUser(req);
         if (user == null) {
             resp.sendRedirect(req.getContextPath() + "/login.jsp");
+            return;
+        }
+        if (!AuthUtil.isClient(user)) {
+            resp.sendRedirect(req.getContextPath() + "/index.jsp");
             return;
         }
 
@@ -30,28 +39,41 @@ public class ConfirmBookingServlet extends HttpServlet {
             return;
         }
 
-        ReservationDAO dao = new ReservationDAO();
+        ReservationDAO dao = DAOFactory.getInstance().createReservationDAO();
         String reservationNo = dao.generateReservationNo();
-
-        boolean allOk = true;
+        int booked = 0;
 
         for (String rid : roomIds) {
-            int roomId = Integer.parseInt(rid);
-
-            String inStr = req.getParameter("checkIn_" + roomId);
-            String outStr = req.getParameter("checkOut_" + roomId);
-
-            if (inStr == null || outStr == null || inStr.isBlank() || outStr.isBlank()) {
-                allOk = false;
+            int roomId;
+            try {
+                roomId = Integer.parseInt(rid);
+            } catch (NumberFormatException e) {
                 continue;
             }
 
-            LocalDate checkIn = LocalDate.parse(inStr);
-            LocalDate checkOut = LocalDate.parse(outStr);
+            String inStr = firstNonBlank(
+                    req.getParameter("checkIn_" + roomId),
+                    req.getParameter("checkIn")
+            );
+            String outStr = firstNonBlank(
+                    req.getParameter("checkOut_" + roomId),
+                    req.getParameter("checkOut")
+            );
 
-            // basic validation
-            if (!checkOut.isAfter(checkIn)) {
-                allOk = false;
+            if (ValidationUtil.isBlank(inStr) || ValidationUtil.isBlank(outStr)) {
+                continue;
+            }
+
+            LocalDate checkIn;
+            LocalDate checkOut;
+            try {
+                checkIn = LocalDate.parse(inStr);
+                checkOut = LocalDate.parse(outStr);
+            } catch (Exception e) {
+                continue;
+            }
+
+            if (!ValidationUtil.isValidDateRange(checkIn, checkOut)) {
                 continue;
             }
 
@@ -62,15 +84,26 @@ public class ConfirmBookingServlet extends HttpServlet {
                     checkIn,
                     checkOut
             );
-
-            if (!ok) allOk = false;
+            if (ok) {
+                booked++;
+            }
         }
 
-        if (allOk) {
+        if (booked > 0) {
             resp.sendRedirect(req.getContextPath() + "/booking_success.jsp?resNo=" +
                     URLEncoder.encode(reservationNo, StandardCharsets.UTF_8));
         } else {
             resp.sendRedirect(req.getContextPath() + "/booking_failed.jsp");
         }
+    }
+
+    private String firstNonBlank(String a, String b) {
+        if (!ValidationUtil.isBlank(a)) {
+            return a.trim();
+        }
+        if (!ValidationUtil.isBlank(b)) {
+            return b.trim();
+        }
+        return null;
     }
 }

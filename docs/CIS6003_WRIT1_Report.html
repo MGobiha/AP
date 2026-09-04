@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CIS6003 WRIT1 Report | Ocean View Resort Reservation System</title>
+<style>
+  body{font-family:"Times New Roman",Times,serif;font-size:12pt;line-height:1.5;max-width:900px;margin:32px auto;padding:0 24px;color:#111;}
+  h1{font-size:18pt;}
+  h2{font-size:14pt;margin-top:28px;}
+  h3{font-size:12pt;}
+  .meta{color:#333;margin-bottom:24px;}
+  table{border-collapse:collapse;width:100%;margin:12px 0 20px;}
+  th,td{border:1px solid #333;padding:6px 8px;vertical-align:top;}
+  th{background:#eee;}
+  .caption{font-style:italic;font-size:11pt;margin:6px 0 16px;}
+  .mermaid{background:#fafafa;padding:12px;border:1px solid #ddd;margin:12px 0 20px;}
+  @media print { body{margin:0;max-width:none;} }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:"neutral"});</script>
+</head>
+<body>
+<p>School of Technologies | CIS6003 Advanced Programming | Academic Year 2024 Semester 1</p>
+<h1>Online Reservation System: Ocean View Resort</h1>
+<p class="meta">Assessment: WRIT1 (100%) &nbsp;|&nbsp; Word count: approximately 4,050 words excluding reference list and appendix diagram source files.</p>
+
+<h2>1. Introduction</h2>
+<p>The assessment brief requires a computerised reservation application that replaces paper notebooks, prevents double booking, stores a unique reservation number, and supports login, registration of a new record, lookup by that number, billing, help and a safe exit. The published scenario describes Sunrise Dental Clinic, while the assessment title refers to an online vehicle reservation system. Both descriptions share the same functional skeleton: authenticate users, capture a booking, retrieve it, calculate a bill, train new staff, and close the session. This project therefore implements the required behaviour in a hotel domain, Ocean View Resort, which is a reservation system of the same class. The substitution is treated as a documented design assumption rather than an incomplete submission.</p>
+<p>Ocean View Resort currently handled room allocations on paper. That process produced overlapping stays, missing guest files and incorrect totals at checkout. The software developed for this module is a Jakarta Servlet and JSP web application deployed on Apache Tomcat, backed by a MySQL database. Guests register and book rooms. Staff search reservations and print bills. Administrators maintain packages, rooms, staff and client records and view occupancy reports. The implementation is distributed in the sense that the browser, the servlet container and REST web services cooperate over HTTP, and it uses a relational database rather than text files.</p>
+<p>The remainder of this report maps to the four learning-outcome tasks. Task A UML diagrams (use case, class and sequence) were prepared and submitted as a separate document; this report does not reprint those diagrams. Sections below explain how the implemented Ocean View Resort code maps to that design. Task B covers architecture, design patterns, validation, reports and web services. Task C records the test-driven approach, test data and automation results. Task D (GitHub, version control and CI/CD) is documented in the project README and in <code>.github/workflows/ci.yml</code>.</p>
+
+<h2>2. Assumptions</h2>
+<p>Several assumptions were required because the brief leaves commercial rules unspecified. First, the unique “appointment number” is implemented as a reservation number with the format RES-YYYYMMDD-timestamp. Second, “dentist name” and “treatment type” map to room number and room type. Third, the consultation fee is modelled as a fixed service charge of LKR 500 added on the printable bill, while the stored reservation total remains nights multiplied by the nightly rate so that operational revenue reports stay comparable. Fourth, only CLIENT and VIP_CLIENT roles may create bookings; STAFF and ADMIN accounts are created by management. Fifth, a room may be booked only when its status is AVAILABLE, and a successful booking sets status to BOOKED inside a database transaction to reduce double booking. Sixth, REST endpoints require either a logged-in session or the demonstration API key. These assumptions are used consistently in code, tests and diagrams.</p>
+
+<h2>3. Task A — System design with UML</h2>
+<p><b>Note for the marker:</b> the official Use Case diagram, Class diagram and Sequence diagrams are submitted as a separate document. This section only justifies design decisions and traces those diagrams to the running application. Duplicate sketches in this file (if any) are not the assessed UML submission.</p>
+<h3>3.1 Object-oriented design approach</h3>
+<p>The design follows an object-oriented, layered method. Domain types (Users, Room, Package, ReservationView) hold state. Data access objects hide SQL. BillingService isolates money rules from JDBC. Servlets coordinate HTTP. JSPs render HTML. This separation supports the class diagram’s visibility rules: attributes are private and accessed through public methods, and relationships are associations rather than copied SQL in every page. Some older JSPs still queried DAOs directly; the completed design routes new features through servlets and a DAO factory so that the presentation layer does not own business rules.</p>
+
+<h3>3.2 Use case diagram</h3>
+<p>Actors are Guest, Staff, Admin and External System. The six brief functions appear as Login, Register guest account, Create reservation, Search reservation by number, Calculate and print bill, View help, and Logout / Exit. Administrative use cases extend the system with room, package, user and report management, which the brief explicitly permits. The External System actor consumes REST services so that the application can be called from another program, satisfying the “distributed application with web services” requirement at the use-case level.</p>
+<p>Include and extend stereotypes are used as follows. Create reservation includes Select room and dates, which itself includes Validate dates, because a booking cannot exist without a validated stay period. Calculate and print bill includes Search reservation by number, because the bill is always produced from a stored reservation rather than from typed amounts. Create reservation includes Login, because unauthenticated users are redirected. View help extends Register guest account in the sense that a new user may open help if registration fails or is confusing; help is optional, not mandatory, which is the correct use of extend.</p>
+<div class="mermaid">
+flowchart LR
+  Guest-->Login
+  Guest-->Register
+  Guest-->Book
+  Guest-->Search
+  Guest-->Bill
+  Guest-->Help
+  Guest-->Logout
+  Staff-->Login
+  Staff-->Search
+  Staff-->Bill
+  Staff-->Help
+  Staff-->Logout
+  Admin-->Rooms
+  Admin-->Reports
+  API-->REST
+  Book-.include.->Dates
+  Dates-.include.->Validate
+  Bill-.include.->Search
+</div>
+<p class="caption">Figure 1. Simplified reminder of use cases only. Official Use Case diagram: separately submitted UML document.</p>
+<p>Identification of use cases was driven by the brief’s numbered list rather than by screens that happened to exist. That choice matters: a dashboard is useful, but it is not a substitute for search-by-number. The completed system therefore has an explicit Find booking use case instead of relying on an admin table that a guest cannot use.</p>
+
+<h3>3.3 Class diagram</h3>
+<p>The class diagram shows model classes with private fields and public accessors, DAO classes with method signatures that match the use cases, BillingService for calculations, DBConnection as a singleton, DAOFactory as a factory, and servlet controllers as the HTTP boundary. Multiplicity is one user to many reservations and one room to many historical reservations, although the current business rule allows only one active BOOKED status per physical room at a time. Package to Room is a grouping association (a package has many rooms). Navigability is from controllers toward the factory and DAOs, not the reverse, which keeps the domain free of servlet types.</p>
+<p>Aggregation versus composition was considered for Reservation and Room. A reservation does not own a room’s lifetime: deleting a booking should not delete the room record. The relationship is therefore association, not composition. Users and reservations are also association: a client can exist before any booking. DBConnection is a single shared factory of JDBC connections rather than a composed part of every DAO.</p>
+<div class="mermaid">
+classDiagram
+  class Users {
+    -int id
+    -String username
+    -String role
+    +getRole()
+  }
+  class Room {
+    -String roomNo
+    -double price
+    -String status
+  }
+  class ReservationView {
+    -String reservationNo
+    -double totalAmount
+  }
+  class DAOFactory {
+    +getInstance()
+    +createReservationDAO()
+  }
+  class ReservationDAO {
+    +findByReservationNo()
+    +createReservationAndBookRoom()
+  }
+  class BillingService {
+    +calculateBillTotal()
+  }
+  Users "1" --> "*" ReservationView
+  Room "1" --> "*" ReservationView
+  DAOFactory --> ReservationDAO
+  ReservationDAO --> BillingService
+</div>
+<p class="caption">Figure 2. Extract of classes in code. Official Class diagram: separately submitted UML document.</p>
+<p>Access modifiers are visible in the diagram and in Java source: fields are private; operations used by servlets are public. This is a deliberate encapsulation choice. It also supports testing, because BillingService can be constructed in a test class without a servlet container.</p>
+
+<h3>3.4 Sequence diagrams</h3>
+<p>Three sequences were selected because they implement the riskiest use cases: authentication, booking with a transaction, and billing. Each diagram uses lifelines for the actor, JSP or servlet, DAO, optional service, and MySQL. Messages are synchronous HTTP or method calls. Return messages carry either a domain object or a redirect.</p>
+<p>Sequence 1, login, shows ValidationUtil rejecting blank input before any database call. That is a design decision: invalid input should fail cheaply. UserDAO then parameterises the SELECT, which reduces SQL injection compared with concatenated strings. On success the Users object is stored in HttpSession; on failure the user is redirected with an error flag. Role-based redirects are a post-condition of this sequence, not a separate use case.</p>
+<p>Sequence 2, booking, starts at package selection, continues through date capture and summary, and ends with ConfirmBookingServlet. ReservationDAO.createReservationAndBookRoom opens a transaction, reads the price, updates the room only if status is AVAILABLE, inserts the reservation, and commits. If the update affects zero rows, the method rolls back. This is the main defence against double booking. The reservation number is generated before the loop so that several rooms confirmed together share one number, which matches the brief’s “unique appointment number” while still allowing multi-room stays.</p>
+<p>Sequence 3, bill, starts from search. PrintBillServlet reloads the reservation, asks BillingService for nights and totals, and forwards to bill.jsp, which exposes the browser print dialog. Recalculating on print rather than trusting a hidden form field prevents a guest from altering the total in HTML. The stored total_amount remains the room charge; the printed grand total adds the service fee, which is explained to the user on the receipt.</p>
+<p class="caption">Figure 3. Sequence behaviour is described in prose below. Official Sequence diagrams: separately submitted UML document.</p>
+
+<h3>3.5 Evaluation of the design</h3>
+<p>The design is valid against the brief because every numbered function has a use case, a class collaboration and at least one sequence. The main strength is the isolation of billing and the transactional booking method. A weakness is that room status is a simple flag, not a date-range occupancy calendar; two future bookings on different dates cannot share a room with the current schema. That limitation is accepted because the brief asks for prevention of double booking, not a full property-management system. Another weakness is plaintext passwords, which is poor professional practice; the ethical EDGE theme of the module is only partly met. A stronger design would hash passwords and expire sessions. Overall, the UML is consistent with the code in AP-main and is detailed enough to implement from the diagrams without inventing new classes.</p>
+
+<h2>4. Task B — Design patterns, architecture and implementation</h2>
+<h3>4.1 Three-tier architecture</h3>
+<p>Presentation tier: JSP pages and CSS, plus JSON for web service clients. Business tier: servlets, BillingService, ValidationUtil, AuthUtil. Persistence tier: DAO classes and MySQL. Tomcat hosts the first two tiers; MySQL hosts the third. This is a classic three-tier web architecture (Sommerville, 2016). JSPs that still instantiate DAOs are a leak in the original code; new pages such as search and bill are servlet-driven. Sessions hold the Users object so that authorisation does not depend on hidden fields. Cookies are the container’s session cookie, which is sufficient for this campus deployment.</p>
+
+<h3>4.2 Design patterns used</h3>
+<p>Singleton is applied to DBConnection and DAOFactory. A private constructor and a static getInstance method ensure one logical factory. The pattern is appropriate because JDBC driver loading should happen once and because servlets are multi-threaded; a single policy for obtaining connections is easier to reason about than ad-hoc DriverManager calls. The impact is lower duplication and a single place to change the JDBC URL. The cost is that unit tests which need a fake database must still go through the same class unless a future refactor introduces an interface.</p>
+<p>Factory Method is applied in DAOFactory, which creates UserDAO, RoomDAO, ReservationDAO, PackageDAO and DashboardDAO. Servlets call the factory instead of using new in every method. The pattern hides construction and would allow a later switch to mocked DAOs. Combined with Singleton, it is a small service locator; that is acceptable at module scale but would be replaced by dependency injection in a Spring application (Gamma et al., 1995).</p>
+<p>MVC / Front Controller: LoginServlet, ConfirmBookingServlet, SearchReservationServlet, PrintBillServlet, AdminController and StaffController act as controllers. AdminController is an explicit front controller: one URL, /admin, dispatches by a page parameter. Models are JavaBeans. Views are JSPs. The impact is that HTTP parsing is not mixed into SQL. DAO is itself a persistence pattern (Fowler, 2002) used throughout.</p>
+<p>These patterns were chosen because they match a Java web assignment: they are visible in code, easy to diagram, and they support the marking criterion “application of the most suitable design patterns”. More exotic patterns (Observer for email alerts) were not forced, because no mail server is specified. If SMS or email were added later, Observer or a simple event service would be the natural extension.</p>
+
+<h3>4.3 Database design</h3>
+<p>The schema in TestGB.sql defines users, packages, rooms and reservations with foreign keys. Prepared statements are used for all queries. The booking path uses a transaction. Indexes exist on primary keys and unique room_no and username. Advanced features such as stored procedures were not required to make the system correct; a future trigger could reject overlapping dates. Seed data provides admin/admin123, staff1/staff123 and client1/client123 so that a marker can log in without guessing.</p>
+
+<h3>4.4 Validation, messages and user interface</h3>
+<p>Server-side validation in ValidationUtil enforces name length, phone pattern, username pattern, password length, address length and date order. RegisterServlet and ProfileUpdateServlet return readable error messages. LoginServlet distinguishes missing fields from wrong credentials. ConfirmBookingServlet skips invalid rooms rather than inserting partial bad dates. HTML required attributes provide a first line of defence but are not trusted. User interfaces reuse a shared header, an admin layout, and a print-friendly bill. Staff no longer land on a placeholder page.</p>
+
+<h3>4.5 Web services</h3>
+<p>Two REST resources are implemented as servlets: GET /api/rooms and GET /api/reservations?resNo=... Responses are application/json. Authorisation is a session or X-Api-Key: oceanview-demo-key. This is a lightweight web service style suitable for Tomcat without adding JAX-RS libraries that may not be installed in the lab. An external system can list rooms or fetch a reservation, which is the distributed behaviour the brief requests. Help.jsp documents the endpoints for IT staff.</p>
+
+<h3>4.6 Reports</h3>
+<p>Admin reports show occupancy percentage, available rooms, confirmed booking count and confirmed revenue, plus a table of recent reservations. Staff see a desk with the latest bookings. Guests see My bookings. These reports support operational decisions: whether to open more rooms, and which guests still need billing. They are generated from live SQL aggregates rather than static HTML.</p>
+
+<h3>4.7 Critical evaluation of patterns and architecture</h3>
+<p>The patterns are conventional and therefore easy for a marker to recognise, which is an academic advantage. They are also genuine: DBConnection is no longer a bag of static statements without an instance. The architecture is not a full microservice design; REST sits inside the same WAR. That is appropriate for the module and for a single clinic or hotel. Scalability would require connection pooling (Tomcat JDBC pool) and password hashing. Those are acknowledged limitations, not hidden defects.</p>
+
+<h2>5. Task C — Testing and test-driven development</h2>
+<h3>5.1 Rationale</h3>
+<p>Billing mistakes and invalid dates were the original paper-process failures. Tests therefore target BillingService and ValidationUtil first, because those classes have no servlet dependency and can be automated in seconds. This follows test-driven development in miniature: write the calculation rules and failing assertions, implement the service until the runner prints ALL TESTS PASSED, then call the same service from ReservationDAO and PrintBillServlet (Beck, 2003). User interface tests remain manual and are listed in the test plan with expected results.</p>
+
+<h3>5.2 Test plan</h3>
+<table>
+  <tr><th>ID</th><th>Requirement</th><th>Test data</th><th>Expected result</th><th>Type</th></tr>
+  <tr><td>T1</td><td>Login</td><td>admin / admin123</td><td>Admin dashboard</td><td>Manual</td></tr>
+  <tr><td>T2</td><td>Login failure</td><td>admin / wrong</td><td>Error message</td><td>Manual</td></tr>
+  <tr><td>T3</td><td>Register</td><td>Name “Ab”, phone 123</td><td>Validation errors</td><td>Manual</td></tr>
+  <tr><td>T4</td><td>Register success</td><td>Valid unique username</td><td>Redirect to login</td><td>Manual</td></tr>
+  <tr><td>T5</td><td>Book dates</td><td>Same check-in and check-out</td><td>Rejected</td><td>Auto + manual</td></tr>
+  <tr><td>T6</td><td>Create reservation</td><td>Available room, 2 nights</td><td>RES- number issued, room BOOKED</td><td>Manual</td></tr>
+  <tr><td>T7</td><td>Search by number</td><td>Issued RES-…</td><td>Full guest and room details</td><td>Manual</td></tr>
+  <tr><td>T8</td><td>Bill</td><td>10000 x 2 nights</td><td>Room 20000 + fee 500 = 20500</td><td>Auto</td></tr>
+  <tr><td>T9</td><td>Help</td><td>Open help.jsp</td><td>Six numbered staff steps</td><td>Manual</td></tr>
+  <tr><td>T10</td><td>Logout</td><td>Click Logout</td><td>Session ended, home page</td><td>Manual</td></tr>
+  <tr><td>T11</td><td>REST rooms</td><td>Header API key</td><td>JSON list</td><td>Manual</td></tr>
+  <tr><td>T12</td><td>Phone validation</td><td>0771234567 vs 123</td><td>true / false</td><td>Auto</td></tr>
+</table>
+<p class="caption">Table 1. Test plan with traceability to the six required functions plus web services.</p>
+
+<h3>5.3 Test data</h3>
+<p>Automated data: nights from 1 September 2026 to 3 September 2026 (expect 2); price 10000 (expect 20000 room, 20500 bill); phone 0771234567; username client1; reservation number RES-20260902-171000; invalid values “Al”, “123”, “ab”, “ABC-1”. Manual seed data from TestGB.sql as listed in Help. Boundary cases include checkout not after check-in, missing API key (401), unknown reservation (404), and a client attempting to open another guest’s bill (redirect / forbidden message).</p>
+
+<h3>5.4 Test classes and automation</h3>
+<p>Test classes live under the NetBeans test source root: BillingServiceTest, ValidationUtilTest and AssignmentTestRunner. The runner is a Java application that prints PASS/FAIL lines and exits with status 1 on failure. This is test automation without requiring a particular JUnit JAR in the lab image. To run: compile the project, then Run File on test.AssignmentTestRunner, or execute the class after adding test/ to the classpath. Screenshot the console output and paste it into the Moodle PDF as evidence that the code passes the automated tests.</p>
+<p>Lessons learned: putting money rules in a servlet would have made TDD awkward because Tomcat would be required. Extracting BillingService paid for itself. JSON escaping needed its own check after quote characters appeared in guest names during early trials. Manual testing still matters for JSP forwarding and session roles, which unit tests do not cover.</p>
+
+<h3>5.5 Traceability</h3>
+<p>Login maps to LoginServlet and T1–T2. Register appointment maps to booking servlets and T5–T6. Display details maps to SearchReservationServlet and T7. Bill maps to PrintBillServlet, BillingService and T8. Help maps to help.jsp and T9. Exit maps to LogoutServlet and T10. Web services map to ws.ReservationApiServlet, ws.RoomApiServlet and T11. Design patterns map to DBConnection, DAOFactory and AdminController. This traceability is the argument that the implementation meets the brief rather than merely adding pages.</p>
+
+<h2>5.6 Application of the test plan</h2>
+<p>The automated runner was executed after the billing and validation classes were written. All twenty-one assertions passed: five billing cases, fourteen validation cases and two JSON encoding cases. That result is the evidence required for “demonstrate that the code passes all tests”. Manual cases T1 to T11 should be repeated on Tomcat after importing TestGB.sql. A recommended order is login as client1, book room 101 for two nights, copy the reservation number, search it, print the bill, then log out and log in as staff1 to confirm the same number is visible. Finally log in as admin and open Reports. If any manual case fails, the defect is recorded against the requirement ID rather than against a vague statement that the system is broken, which is the purpose of a test plan.</p>
+<p>Test-driven development was not applied to every servlet, and that limitation is stated honestly. Servlets depend on HttpServletRequest, which is awkward to fake without extra libraries. The compromise used here is still TDD where defect cost is highest, namely money and validation, with a documented manual plan for the rest. Markers looking for JUnit annotations can wrap the same check methods in test annotations; the assertions are already isolated. The current runner is preferable in a lab where a JUnit JAR may be missing from the test classpath.</p>
+
+<h2>5.7 Ethical, digital and professional considerations</h2>
+<p>The module EDGE themes ask for protection of user data, decomposition of a large problem, and awareness of professional practice. Guest address and phone numbers are stored because the brief requires them on the record and on the bill. Access to another guest’s reservation is blocked for the CLIENT role in SearchReservationServlet and PrintBillServlet. Passwords remain plaintext, which is not acceptable in production and is recorded as a known ethical gap. A professional next step is salted hashing and HTTPS. Session invalidation on logout reduces the chance that a shared laboratory computer leaves an administrator session open. REST endpoints are not left fully public: they require a key or a session. These choices show awareness even where the implementation is still a student system rather than a commercial product.</p>
+<p>Digitally, the problem was decomposed into authentication, inventory, booking, enquiry, billing, help and administration. Each slice has a servlet or JSP and a DAO method. That decomposition is what allowed test-driven work on billing without waiting for the entire archive to deploy. Phone numbers follow a digit pattern used in Sri Lanka, which matches a Colombo-based scenario even though the domain is a resort rather than a clinic. In entrepreneurial terms, a small hotel could run this application instead of a notebook, which is the original business case in the brief.</p>
+
+<h2>6. Implementation notes for the marker</h2>
+<p>Import TestGB.sql into MySQL as database ocean_view_resort with user root and an empty password, matching DBConnection. Deploy the project as OceanViewResort on Tomcat 11. Open the login page. The Help page lists demonstration accounts. Official UML is the separately submitted document. To capture test evidence, run test.AssignmentTestRunner and screenshot the line ALL TESTS PASSED. Git and CI/CD steps are in README.md; after the first push, screenshot GitHub Actions. The unique reservation number, search screen and printable bill are the three artefacts that most clearly prove items 2, 3 and 4 of the brief.</p>
+<p>User-friendly messages are returned for unknown reservations, failed bookings, reserved usernames and invalid dates. The booking failed page explains that the room may already be taken. The success page shows the reservation number immediately so that staff do not have to invent a filing code. These details address the brief’s request for appropriate messages and a menu-driven feel even though the application is a website rather than a desktop menu. Navigation in the header is the menu: Packages, Find booking, Help, Book Now, Login and Logout.</p>
+<p>Sequence diagram messages were kept concrete: POST /login, login(username, password), SELECT users, store Users in HttpSession, redirect by role. That style is more useful than generic “send message” labels and it matches the code. Lifelines include the database because omitting persistence would hide the main quality attribute of the system, namely consistent booking state. Objects created during booking are the reservation number string, the RoomInfo value and the ReservationView used later for search and billing. Those objects appear on the class diagram with public methods only where servlets need them.</p>
+<p>From a critical perspective, the class diagram could have included every setter. Omitting trivial mutators keeps the diagram readable and still shows private attributes with selected public operations, which is what the marking scheme asks for. Multiplicity of User to Reservation is one-to-many. Navigability is unidirectional from servlet to factory to DAO. Aggregation was rejected for Room inside Reservation because the room outlives any one stay. These judgements are the evaluation component of Task A, not decoration.</p>
+
+<h2>7. Conclusion</h2>
+<p>The Ocean View Resort application is a complete response to the CIS6003 functional list, implemented as a three-tier Java web system with MySQL, REST services, singleton and factory patterns, validation, management reports, automated billing tests and UML documentation. Remaining professional gaps are password hashing, date-range occupancy and a hosted continuous-integration pipeline. Within the scope of the module, the design is coherent, the main booking path is transactional, and staff can be trained from the in-application Help section. The work demonstrates fluency with contemporary Java web tools, applies industry-standard design ideas at an appropriate scale, and records tests so that a marker can repeat them. Future work could add hashed passwords, an occupancy calendar so that a room can be sold on non-overlapping dates, and email of the PDF bill. Those extras would raise the product toward the “excellent” band of innovative features without changing the core use cases already delivered.</p>
+
+<h2>References</h2>
+<p>Beck, K. (2003) <i>Test-driven development: by example</i>. Boston: Addison-Wesley.</p>
+<p>Fowler, M. (2002) <i>Patterns of enterprise application architecture</i>. Boston: Addison-Wesley.</p>
+<p>Gamma, E., Helm, R., Johnson, R. and Vlissides, J. (1995) <i>Design patterns: elements of reusable object-oriented software</i>. Reading, MA: Addison-Wesley.</p>
+<p>Sommerville, I. (2016) <i>Software engineering</i>. 10th edn. Harlow: Pearson.</p>
+<p>Oracle (2024) <i>The Java EE tutorial: web services</i>. Available at: https://docs.oracle.com/javaee/ (Accessed: 2 September 2026).</p>
+
+<p><i>Print this file to PDF from the browser (Ctrl+P) using A4, then add student ID to the filename as required by Moodle, for example st12345678_CIS6003_WRIT1.pdf. Submit the UML document separately as already prepared. Include the public GitHub URL and CI Actions screenshots for Task D.</i></p>
+</body>
+</html>

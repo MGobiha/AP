@@ -122,6 +122,15 @@
         <h2>Ocean View Resort</h2>
 
         <form action="login" method="post">
+            <% String loginError = request.getParameter("error"); %>
+            <% if ("1".equals(loginError)) { %>
+              <p style="background:#ffecec;color:#c21818;padding:10px;border-radius:10px;margin-bottom:14px;font-size:13px;">Invalid username or password.</p>
+            <% } else if ("required".equals(loginError)) { %>
+              <p style="background:#ffecec;color:#c21818;padding:10px;border-radius:10px;margin-bottom:14px;font-size:13px;">Username and password are required.</p>
+            <% } %>
+            <% if ("1".equals(request.getParameter("registered"))) { %>
+              <p style="background:#eafff1;color:#0e8a3a;padding:10px;border-radius:10px;margin-bottom:14px;font-size:13px;">Account created. Please sign in.</p>
+            <% } %>
 
             <div class="input-group">
                 <label>Username</label>

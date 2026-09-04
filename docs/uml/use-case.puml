@@ -1,0 +1,49 @@
+@startuml
+left to right direction
+actor Guest
+actor Staff
+actor Admin
+actor "External System" as API
+
+rectangle "Ocean View Resort Reservation System" {
+  usecase "Login" as UC1
+  usecase "Logout / Exit" as UC2
+  usecase "Register guest account" as UC3
+  usecase "Create reservation" as UC4
+  usecase "Select room and dates" as UC4a
+  usecase "Validate dates" as UC4b
+  usecase "Search reservation by number" as UC5
+  usecase "Calculate and print bill" as UC6
+  usecase "View help" as UC7
+  usecase "Manage rooms and packages" as UC8
+  usecase "Manage staff and clients" as UC9
+  usecase "View management reports" as UC10
+  usecase "Call REST web services" as UC11
+}
+
+Guest --> UC1
+Guest --> UC2
+Guest --> UC3
+Guest --> UC4
+Guest --> UC5
+Guest --> UC6
+Guest --> UC7
+Staff --> UC1
+Staff --> UC2
+Staff --> UC5
+Staff --> UC6
+Staff --> UC7
+Admin --> UC1
+Admin --> UC2
+Admin --> UC5
+Admin --> UC8
+Admin --> UC9
+Admin --> UC10
+API --> UC11
+
+UC4 ..> UC4a : <<include>>
+UC4a ..> UC4b : <<include>>
+UC6 ..> UC5 : <<include>>
+UC4 ..> UC1 : <<include>>
+UC3 ..> UC7 : <<extend>>
+@enduml

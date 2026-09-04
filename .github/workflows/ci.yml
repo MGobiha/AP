@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Automated tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Compile unit tests
+        run: |
+          mkdir -p build/ci
+          javac -encoding UTF-8 -d build/ci \
+            src/java/service/BillingService.java \
+            src/java/util/ValidationUtil.java \
+            src/java/util/JsonUtil.java \
+            test/service/BillingServiceTest.java \
+            test/util/ValidationUtilTest.java \
+            test/test/AssignmentTestRunner.java
+
+      - name: Run AssignmentTestRunner
+        run: java -cp build/ci test.AssignmentTestRunner
+
+  artifact:
+    name: Publish test build (CD)
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Compile test classes for artifact
+        run: |
+          mkdir -p build/ci
+          javac -encoding UTF-8 -d build/ci \
+            src/java/service/BillingService.java \
+            src/java/util/ValidationUtil.java \
+            src/java/util/JsonUtil.java \
+            test/service/BillingServiceTest.java \
+            test/util/ValidationUtilTest.java \
+            test/test/AssignmentTestRunner.java
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oceanview-test-build
+          path: build/ci

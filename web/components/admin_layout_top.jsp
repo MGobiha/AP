@@ -5,7 +5,8 @@
   if(u == null){ response.sendRedirect("login.jsp"); return; }
   if(!"ADMIN".equalsIgnoreCase(u.getRole())){ response.sendRedirect("index.jsp"); return; }
 
-  String active = request.getParameter("page");
+  String active = request.getParameter("active");
+  if(active == null) active = request.getParameter("page");
   if(active == null) active = "dashboard";
 
   String uname = u.getUsername();
@@ -60,11 +61,14 @@
     </div>
 
     <div class="nav">
-      <a class="<%= "dashboard".equals(active) ? "active" : "" %>" href="dashboard.jsp?page=dashboard"><span class="dot"></span> Dashboard</a>
+      <a class="<%= "dashboard".equals(active) ? "active" : "" %>" href="<%=request.getContextPath()%>/admin?page=dashboard"><span class="dot"></span> Dashboard</a>
       <a class="<%= "packages".equals(active) ? "active" : "" %>" href="<%=request.getContextPath()%>/admin?page=packages"><span class="dot"></span> Packages</a>
       <a class="<%= "rooms".equals(active) ? "active" : "" %>" href="<%=request.getContextPath()%>/admin?page=rooms"><span class="dot"></span> Rooms</a>
       <a class="<%= "staff".equals(active) ? "active" : "" %>" href="<%=request.getContextPath()%>/admin?page=staff"><span class="dot"></span> Staff</a>
       <a class="<%= "clients".equals(active) ? "active" : "" %>" href="<%=request.getContextPath()%>/admin?page=clients"><span class="dot"></span> Clients</a>
+      <a class="<%= "reports".equals(active) ? "active" : "" %>" href="<%=request.getContextPath()%>/admin?page=reports"><span class="dot"></span> Reports</a>
+      <a href="<%=request.getContextPath()%>/searchReservation"><span class="dot"></span> Find booking</a>
+<!--      <a href="<%=request.getContextPath()%>/help.jsp"><span class="dot"></span> Help</a>-->
     </div>
   </aside>
 
@@ -73,10 +77,14 @@
 
     <!-- Topbar -->
     <div class="topbar">
-      <div class="search">🔎 <input type="text" placeholder="Search..." /></div>
+      <div class="search">
+        <form action="<%=request.getContextPath()%>/searchReservation" method="get" style="display:flex;width:100%;gap:8px;">
+          <input type="text" name="resNo" placeholder="Search reservation number (RES-...)" />
+        </form>
+      </div>
       <div class="right">
         <span class="chip">My Account: <%= uname %></span>
-        <a class="logout" href="<%=request.getContextPath()%>/logout.jsp">Logout</a>
+        <a class="logout" href="<%=request.getContextPath()%>/logout">Logout</a>
       </div>
     </div>
 

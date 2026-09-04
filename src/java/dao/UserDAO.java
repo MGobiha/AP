@@ -228,6 +228,20 @@ public boolean updateRole(int id, String role) {
     }
 }
 
+public boolean usernameExists(String username) {
+    String sql = "SELECT id FROM users WHERE username=?";
+    try (Connection con = DBConnection.getConnection();
+         PreparedStatement ps = con.prepareStatement(sql)) {
+        ps.setString(1, username);
+        try (ResultSet rs = ps.executeQuery()) {
+            return rs.next();
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        return true;
+    }
+}
+
 public Users login(String username, String password) {
 
     Users user = null;
@@ -246,6 +260,8 @@ public Users login(String username, String password) {
             user = new Users();
             user.setId(rs.getInt("id"));
             user.setFullName(rs.getString("full_name"));
+            user.setPhone(rs.getString("phone"));
+            user.setAddress(rs.getString("address"));
             user.setUsername(rs.getString("username"));
             user.setRole(rs.getString("role"));
         }

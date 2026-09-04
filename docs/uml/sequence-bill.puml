@@ -1,0 +1,18 @@
+@startuml
+actor Staff
+participant SearchReservationServlet
+participant PrintBillServlet
+participant ReservationDAO
+participant BillingService
+database MySQL
+
+Staff -> SearchReservationServlet : GET /searchReservation?resNo=RES-...
+SearchReservationServlet -> ReservationDAO : findByReservationNo()
+ReservationDAO -> MySQL : JOIN reservations, users, rooms
+SearchReservationServlet --> Staff : reservation_search.jsp
+Staff -> PrintBillServlet : GET /printBill?resNo=RES-...
+PrintBillServlet -> ReservationDAO : findByReservationNo()
+PrintBillServlet -> BillingService : countNights + calculate totals
+BillingService --> PrintBillServlet : nights, roomTotal, serviceFee, grandTotal
+PrintBillServlet --> Staff : bill.jsp (print / Save as PDF)
+@enduml

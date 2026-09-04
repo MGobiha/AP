@@ -43,7 +43,7 @@
       <div class="row"><div class="label">Address</div><div class="value"><%= u.getAddress() == null ? "-" : u.getAddress() %></div></div>
 
       <a class="btn" href="profile_edit.jsp">Edit Profile</a>
-        <a class="btn gray" href="dashboard.jsp">Back</a>
+        <a class="btn gray" href="index.jsp">Back</a>
         <a class="btn gray" href="<%=request.getContextPath()%>/logout">Logout</a>
     </div>
   </div>

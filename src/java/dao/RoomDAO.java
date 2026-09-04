@@ -20,15 +20,7 @@ public class RoomDAO {
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                Room r = new Room();
-                r.setId(rs.getInt("id"));
-                r.setRoomNo(rs.getString("room_no"));
-                r.setRoomType(rs.getString("room_type"));
-                r.setPrice(rs.getDouble("price"));
-                r.setStatus(rs.getString("status"));
-                r.setPackageId(rs.getInt("package_id"));
-
-                list.add(r);
+                list.add(map(rs));
             }
 
         } catch (Exception e) {
@@ -107,23 +99,51 @@ public class RoomDAO {
     }
 
     public List<Room> findAvailableRooms() {
-    List<Room> list = new ArrayList<>();
-    String sql = "SELECT * FROM rooms WHERE status='AVAILABLE' ORDER BY room_no ASC";
-    try (Connection con = DBConnection.getConnection();
-         PreparedStatement ps = con.prepareStatement(sql);
-         ResultSet rs = ps.executeQuery()) {
+        return findByStatus("AVAILABLE");
+    }
 
-        while (rs.next()) {
-            Room r = new Room();
-            r.setId(rs.getInt("id"));
-            r.setRoomNo(rs.getString("room_no"));
-            r.setRoomType(rs.getString("room_type"));
-            r.setPrice(rs.getDouble("price"));
-            r.setStatus(rs.getString("status"));
-            r.setPackageId(rs.getInt("package_id"));
-            list.add(r);
+    public List<Room> getRoomsByType(String roomType) {
+        List<Room> list = new ArrayList<>();
+        String sql = "SELECT * FROM rooms WHERE UPPER(room_type) = UPPER(?) ORDER BY room_no ASC";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, roomType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(map(rs));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    } catch (Exception e) { e.printStackTrace(); }
-    return list;
-}
+        return list;
+    }
+
+    public List<Room> findByStatus(String status) {
+        List<Room> list = new ArrayList<>();
+        String sql = "SELECT * FROM rooms WHERE UPPER(status)=UPPER(?) ORDER BY room_no ASC";
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, status);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(map(rs));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    private Room map(ResultSet rs) throws Exception {
+        Room r = new Room();
+        r.setId(rs.getInt("id"));
+        r.setRoomNo(rs.getString("room_no"));
+        r.setRoomType(rs.getString("room_type"));
+        r.setPrice(rs.getDouble("price"));
+        r.setStatus(rs.getString("status"));
+        r.setPackageId(rs.getInt("package_id"));
+        return r;
+    }
 }
